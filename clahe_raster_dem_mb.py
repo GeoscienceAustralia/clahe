@@ -4,9 +4,9 @@ Currently only supports single band raster.
 import rasterio as rio
 from skimage.exposure import equalize_adapthist, rescale_intensity
 
-input_raster = '/home/sudipta/Documents/GA-cover2/k_15v5.tif'
+input_raster = 'dem4000.tif'
 
-output_image = 'out_sirsam.tif'
+output_image = 'out_mb.tif'
 
 # don't change the next two lines
 src = rio.open(input_raster)
@@ -19,7 +19,7 @@ specify in_range=(min_value_to_limit, max_value_to_limit),
 in_range="image" to use min and max in the image values.
 """
 
-resacled_data = rescale_intensity(data, in_range=(0, 4.717), out_range=(0, 1))
+resacled_data = rescale_intensity(data, in_range=(0, 1000), out_range=(0, 1))
 
 """
 kernel_size: integer or list-like, optional
@@ -37,8 +37,8 @@ Number of gray bins for histogram (“data range”).
 """
 
 stretched_data = equalize_adapthist(resacled_data,
-                                    kernel_size=200,
-                                    clip_limit=0.01,
+                                    kernel_size=400,
+                                    clip_limit=0.3,
                                     nbins=256)
 
 
