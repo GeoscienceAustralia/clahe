@@ -2,16 +2,19 @@
 Currently only supports single band raster.
 """
 import numpy as np
-import rasterio as rio
+from osgeo import gdal, gdalconst
 from skimage.exposure import equalize_adapthist, rescale_intensity
 
 input_raster = 'dem4000.tif'
-
 output_raster = 'out_mb.tif'
+output_nodata = -999.0
 
 # don't change the next two lines
-src = rio.open(input_raster)
-data = src.read(1, masked=True)  # read band 1
+src = gdal.Open(input_raster, gdalconst.GA_ReadOnly)
+data = src.GetRasterBand(1).ReadAsArray()
+nodata = getattr(np, str(data.dtype))(
+    src.GetRasterBand(1).GetNoDataValue())
+mask = data == nodata
 
 
 """
@@ -20,7 +23,7 @@ specify in_range=(min_value_to_limit, max_value_to_limit),
 in_range="image" to use min and max in the image values.
 """
 
-rescaled_data = rescale_intensity(data.data.astype(np.float32),
+rescaled_data = rescale_intensity(data.astype(np.float32),
                                   in_range=(0, 1000), out_range=(0, 1))
 
 """
@@ -46,13 +49,19 @@ stretched_data = equalize_adapthist(rescaled_data,
 
 # don't change anything below this
 
-profile = src.profile
-profile.update(dtype=rio.float32, count=1, compress='lzw',
-               nodata=-999)
-out_data = np.ma.MaskedArray(data=stretched_data,
-                             mask=data.mask,
-                             dtype=np.float32,
-                             fill_value=-999.0)
-with rio.open(output_raster, 'w', **profile) as dst:
-    dst.write(out_data.astype(rio.float32), indexes=1)
+driver = gdal.GetDriverByName('GTiff')
 
+out_ds = driver.Create(output_raster,
+                       xsize=src.RasterXSize,
+                       ysize=src.RasterYSize,
+                       bands=1,
+                       eType=gdal.GDT_Float32  # change dtype manually
+                       )
+out_ds.SetGeoTransform(src.GetGeoTransform())
+out_ds.SetProjection(src.GetProjection())
+
+rescaled_data[mask] = output_nodata
+out_ds.GetRasterBand(1).WriteArray(rescaled_data)
+# might have to change dtype manually
+out_ds.GetRasterBand(1).SetNoDataValue(output_nodata)
+out_ds.FlushCache()
