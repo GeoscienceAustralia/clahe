@@ -1,3 +1,4 @@
+from optparse import OptionParser
 import numpy as np
 from osgeo import gdal, gdalconst
 from skimage.exposure import rescale_intensity
@@ -14,16 +15,16 @@ def read_geotif(tif):
                              fill_value=nodata)
 
 
-def rgb_combine(local, meso, broad, input_tif, output_tif):
+def rgb_combine(blue_raster, green_raster, red_raster, input_tif, output_tif):
 
-    loc = read_geotif(local)
-    mes = read_geotif(meso)
-    bro = read_geotif(broad)
+    blue = read_geotif(blue_raster)
+    green = read_geotif(green_raster)
+    red = read_geotif(red_raster)
 
     # rescale to 0-256, 256 because we later save as gdt_byte
-    loc = rescale_intensity(loc, out_range=(0, 256))
-    mes = rescale_intensity(mes, out_range=(0, 256))
-    bro = rescale_intensity(bro, out_range=(0, 256))
+    blue = rescale_intensity(blue, out_range=(0, 256))
+    green = rescale_intensity(green, out_range=(0, 256))
+    red = rescale_intensity(red, out_range=(0, 256))
 
     # source information
     src_ds = gdal.Open(input_tif, gdalconst.GA_ReadOnly)
@@ -40,14 +41,39 @@ def rgb_combine(local, meso, broad, input_tif, output_tif):
     out_ds.SetProjection(src_ds.GetProjection())
 
     # write data in the three bands
-    out_ds.GetRasterBand(1).WriteArray(bro)
-    out_ds.GetRasterBand(2).WriteArray(mes)
-    out_ds.GetRasterBand(3).WriteArray(loc)
+    out_ds.GetRasterBand(1).WriteArray(red)
+    out_ds.GetRasterBand(2).WriteArray(green)
+    out_ds.GetRasterBand(3).WriteArray(blue)
 
     out_ds.FlushCache()
     out_ds = None
 
 
 if __name__ == '__main__':
-    rgb_combine('out_mb.tif', 'out_mb1.tif', 'out_mb2.tif', 'out_mb.tif',
-                'rgb.tif')
+    parser = OptionParser(usage='%prog -b blue_raster  -g green_raster \n'
+                                '-r red_raster -o output_raster')
+    parser.add_option('-b', '--blue_raster', type=str, dest='blue_raster',
+                      help='name of input blue raster file')
+
+    parser.add_option('-g', '--green_raster', type=str, dest='green_raster',
+                      help='name of input green raster file')
+
+    parser.add_option('-r', '--red_raster', type=str, dest='red_raster',
+                      help='name of the input red raster file')
+
+    parser.add_option('-o', '--output_raster', type=str, dest='output_raster',
+                      help='name of the output rgb raster file')
+
+    options, args = parser.parse_args()
+
+    if not options.red_raster:  # if filename is not given
+        parser.error('Input red raster filename must be provided.')
+    if not options.green_raster:  # if filename is not given
+        parser.error('Input green raster filename must be provided.')
+    if not options.blue_raster:  # if filename is not given
+        parser.error('Input blue raster filename must be provided.')
+
+    if not options.output_raster:  # if filename is not given
+        parser.error('Output raster filename must be provided.')
+    rgb_combine(options.blue_raster, options.green_raster, options.red_raster,
+                options.blue_raster, options.output_raster)

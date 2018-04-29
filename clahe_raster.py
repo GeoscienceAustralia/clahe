@@ -14,7 +14,7 @@ def apply_clahe(input_raster, output_raster,
     # don't change the next two lines
 
     if in_range != "image":
-        in_range = tuple([int(s) for s in in_range.split()])
+        in_range = tuple([float(s) for s in in_range.split()])
 
     src = gdal.Open(input_raster, gdalconst.GA_ReadOnly)
     data = src.GetRasterBand(1).ReadAsArray()
